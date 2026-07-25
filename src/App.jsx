@@ -11,7 +11,7 @@ export default function App() {
   seedIfEmpty()
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <div className="min-h-screen bg-[#f8f7f4]">
         <Routes>
           <Route path="/" element={<Dashboard />} />
