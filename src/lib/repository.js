@@ -71,7 +71,7 @@ export const mealSlotsRepo = {
   },
   create(slot) {
     const all = get(KEYS.mealSlots) || []
-    const newSlot = { ...slot, id: genId() }
+    const newSlot = { ...slot, id: genId(), createdAt: new Date().toISOString() }
     set(KEYS.mealSlots, [newSlot, ...all])
     return newSlot
   },

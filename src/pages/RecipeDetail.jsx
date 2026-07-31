@@ -9,11 +9,31 @@ export default function RecipeDetail() {
   const [recipe, setRecipe] = useState(null)
   const [slots, setSlots] = useState([])
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [editForm, setEditForm] = useState({
+    name: '', emoji: '', ingredient: '', ageMin: 6,
+    texture: 'mashed', allergens: '', prepNotes: '', safe: true,
+  })
 
   useEffect(() => {
     setRecipe(recipesRepo.get(id))
     setSlots(mealSlotsRepo.list())
   }, [id])
+
+  useEffect(() => {
+    if (recipe) {
+      setEditForm({
+        name: recipe.name || '',
+        emoji: recipe.emoji || '',
+        ingredient: recipe.ingredient || '',
+        ageMin: recipe.ageMin || 6,
+        texture: recipe.texture || 'mashed',
+        allergens: (recipe.allergens || []).join(', '),
+        prepNotes: recipe.prepNotes || '',
+        safe: recipe.safe ?? true,
+      })
+    }
+  }, [recipe])
 
   if (!recipe) {
     return (
@@ -33,6 +53,9 @@ export default function RecipeDetail() {
       <div className="flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 text-lg">←</button>
         <div className="flex-1" />
+        <button onClick={() => setShowEdit(true)} className="text-gray-300 hover:text-blue-400 text-sm transition-colors">
+          Edit
+        </button>
         <button onClick={() => setConfirmDelete(true)} className="text-gray-300 hover:text-red-400 text-sm transition-colors">
           Delete
         </button>
@@ -98,6 +121,85 @@ export default function RecipeDetail() {
         title="Delete this recipe?"
         message={`This will remove "${recipe.name}" from your library.`}
       />
+
+      {/* Edit Recipe Modal */}
+      {showEdit && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="fixed inset-0 bg-black/30" onClick={() => setShowEdit(false)} />
+          <div className="relative z-10 w-full max-w-lg bg-white sm:rounded-2xl rounded-t-3xl shadow-xl max-h-[85vh] overflow-y-auto">
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              const allergens = editForm.allergens
+                ? editForm.allergens.split(',').map(a => a.trim()).filter(Boolean)
+                : []
+              recipesRepo.update(recipe.id, {
+                ...editForm, allergens,
+                emoji: editForm.emoji || '🍽️',
+                ageMin: Number(editForm.ageMin) || 6,
+              })
+              setRecipe({ ...recipe, ...editForm, allergens, emoji: editForm.emoji || '🍽️', ageMin: Number(editForm.ageMin) || 6 })
+              setShowEdit(false)
+            }} className="p-5 space-y-4">
+              <h2 className="text-lg font-semibold text-gray-900">Edit Recipe</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1">
+                  <span className="text-xs text-gray-500">Emoji</span>
+                  <input value={editForm.emoji} onChange={e => setEditForm({...editForm, emoji: e.target.value})}
+                    placeholder="🍽️" className="w-full px-3 py-2 rounded-lg border border-gray-200 text-lg text-center" />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-gray-500">Name *</span>
+                  <input required value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" />
+                </label>
+              </div>
+              <label className="space-y-1 block">
+                <span className="text-xs text-gray-500">Ingredient</span>
+                <input value={editForm.ingredient} onChange={e => setEditForm({...editForm, ingredient: e.target.value})}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1">
+                  <span className="text-xs text-gray-500">Min Age (months)</span>
+                  <input type="number" min={0} value={editForm.ageMin} onChange={e => setEditForm({...editForm, ageMin: e.target.value})}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-gray-500">Texture</span>
+                  <select value={editForm.texture} onChange={e => setEditForm({...editForm, texture: e.target.value})}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                    <option value="puree">Puree</option>
+                    <option value="mashed">Mashed</option>
+                    <option value="thinned">Thinned</option>
+                    <option value="strips">Strips</option>
+                    <option value="cubes">Cubes</option>
+                  </select>
+                </label>
+              </div>
+              <label className="space-y-1 block">
+                <span className="text-xs text-gray-500">Allergens (comma separated)</span>
+                <input value={editForm.allergens} onChange={e => setEditForm({...editForm, allergens: e.target.value})}
+                  placeholder="e.g. egg, peanut" className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" />
+              </label>
+              <label className="space-y-1 block">
+                <span className="text-xs text-gray-500">Prep Notes</span>
+                <textarea value={editForm.prepNotes} onChange={e => setEditForm({...editForm, prepNotes: e.target.value})} rows={3}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none" />
+              </label>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowEdit(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600">
+                  Cancel
+                </button>
+                <button type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium active:scale-[0.98] transition-transform">
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
