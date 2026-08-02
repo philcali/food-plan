@@ -6,8 +6,8 @@ const LOG_AMOUNTS = ['Tasted', 'Ate some', 'Ate most', 'Ate all', 'Refused']
 const REACTIONS = ['None', 'Mild rash', 'Vomiting', 'Diarrhea', 'Gas', 'Other']
 
 export default function Diary() {
-  const [logs, setLogs] = useState(feedingLogsRepo.list().items)
-  const [totalLogs, setTotalLogs] = useState(feedingLogsRepo.list().total)
+  const [logs, setLogs] = useState([])
+  const [totalLogs, setTotalLogs] = useState(0)
   const [recipes] = useState(recipesRepo.list().items)
   const [showForm, setShowForm] = useState(false)
   const [showEdit, setShowEdit] = useState(null)
@@ -31,9 +31,11 @@ export default function Diary() {
   const [expandedPhoto, setExpandedPhoto] = useState(null)
 
   useEffect(() => {
-    const { items, total } = feedingLogsRepo.list()
-    setLogs(items)
-    setTotalLogs(total)
+    ;(async () => {
+      const { items, total } = await feedingLogsRepo.list()
+      setLogs(items)
+      setTotalLogs(total)
+    })()
   }, [])
 
   const handlePhotoSelect = async (e) => {
@@ -44,10 +46,10 @@ export default function Diary() {
     setForm({ ...form, photo: compressed })
   }
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault()
-    feedingLogsRepo.create({ ...form, date: form.date || localDate() })
-    const { items, total } = feedingLogsRepo.list()
+    await feedingLogsRepo.create({ ...form, date: form.date || localDate() })
+    const { items, total } = await feedingLogsRepo.list()
     setLogs(items)
     setTotalLogs(total)
     setShowForm(false)
@@ -64,10 +66,10 @@ export default function Diary() {
     setPhotoPreview(null)
   }
 
-  const handleToggleFav = (id) => {
+  const handleToggleFav = async (id) => {
     const log = logs.find(l => l.id === id)
-    feedingLogsRepo.update(id, { favorite: !log.favorite })
-    const { items, total } = feedingLogsRepo.list()
+    await feedingLogsRepo.update(id, { favorite: !log.favorite })
+    const { items, total } = await feedingLogsRepo.list()
     setLogs(items)
     setTotalLogs(total)
   }
@@ -77,9 +79,9 @@ export default function Diary() {
     setShowEdit(log.id)
   }
 
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault()
-    feedingLogsRepo.update(showEdit, {
+    await feedingLogsRepo.update(showEdit, {
       date: editForm.date,
       time: editForm.time,
       recipeId: editForm.recipeId,
@@ -88,7 +90,7 @@ export default function Diary() {
       notes: editForm.notes,
       photo: editForm.photo,
     })
-    const { items, total } = feedingLogsRepo.list()
+    const { items, total } = await feedingLogsRepo.list()
     setLogs(items)
     setTotalLogs(total)
     setShowEdit(null)
@@ -98,9 +100,9 @@ export default function Diary() {
     setConfirmDelete({ id, name })
   }
 
-  const confirmDeleteLog = () => {
-    feedingLogsRepo.delete(confirmDelete.id)
-    const { items, total } = feedingLogsRepo.list()
+  const confirmDeleteLog = async () => {
+    await feedingLogsRepo.delete(confirmDelete.id)
+    const { items, total } = await feedingLogsRepo.list()
     setLogs(items)
     setTotalLogs(total)
     setConfirmDelete(null)

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { recipesRepo, mealSlotsRepo, feedingLogsRepo, localDate } from '../lib/repository'
 
@@ -17,9 +18,13 @@ function getWeekDays() {
 export default function Dashboard() {
   const recipes = recipesRepo.list().items
   const slots = mealSlotsRepo.list()
-  const logs = feedingLogsRepo.list().items
+  const [logs, setLogs] = useState([])
   const weekDays = getWeekDays()
   const todayKey = localDate()
+
+  useEffect(() => {
+    feedingLogsRepo.list().then(({ items }) => setLogs(items))
+  }, [])
 
   // Stats
   const uniqueFoods = new Set(logs.map(l => l.recipeId)).size

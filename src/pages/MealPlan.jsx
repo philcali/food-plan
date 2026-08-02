@@ -162,9 +162,9 @@ export default function MealPlan() {
     setShowLogFeed(slot)
   }
 
-  const handleSaveLog = (e) => {
+  const handleSaveLog = async (e) => {
     e.preventDefault()
-    feedingLogsRepo.create({ ...logForm, date: logForm.date || localDate() })
+    await feedingLogsRepo.create({ ...logForm, date: logForm.date || localDate() })
     setShowLogFeed(null)
   }
 

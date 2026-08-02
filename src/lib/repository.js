@@ -6,6 +6,8 @@
 // MealSlots: returns all, UI slices by week
 // Ordering: descending by default (newest first)
 
+import { openDB } from 'idb'
+
 /**
  * Format a Date as YYYY-MM-DD in the user's local timezone.
  * Uses 'en-CA' locale which produces YYYY-MM-DD natively.
@@ -27,6 +29,68 @@ const KEYS = {
   recipes: 'fp_recipes',
   mealSlots: 'fp_meal_slots',
   feedingLogs: 'fp_feeding_logs',
+}
+
+// ── Image Store (IndexedDB) ──
+// Stores raw Blob bytes for photos — zero base64 overhead vs localStorage.
+// Keyed by the entity ID (e.g., feeding log id).
+const IMAGE_DB_NAME = 'fp_images'
+const IMAGE_STORE = 'photos'
+
+let _dbPromise = null
+
+async function getDb() {
+  if (!_dbPromise) {
+    _dbPromise = openDB(IMAGE_DB_NAME, 1, {
+      upgrade(db) {
+        db.createObjectStore(IMAGE_STORE)
+      },
+    })
+  }
+  return _dbPromise
+}
+
+export const imageStore = {
+  /** Store a data URL as a Blob, keyed by entityId */
+  async put(entityId, dataUrl) {
+    const db = await getDb()
+    // Convert data URL back to Blob for storage (avoids base64 overhead)
+    const byteString = atob(dataUrl.split(',')[1])
+    const mimeString = dataUrl.split(',')[0].split(':')[1].split(';')[0]
+    const ab = new ArrayBuffer(byteString.length)
+    const ia = new Uint8Array(ab)
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i)
+    }
+    const blob = new Blob([ab], { type: mimeString })
+    await db.put(IMAGE_STORE, blob, entityId)
+  },
+
+  /** Retrieve a photo as a data URL for a given entityId */
+  async get(entityId) {
+    const db = await getDb()
+    const blob = await db.get(IMAGE_STORE, entityId)
+    if (!blob) return null
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = () => reject(reader.error)
+      reader.readAsDataURL(blob)
+    })
+  },
+
+  /** Delete a photo by entityId */
+  async delete(entityId) {
+    const db = await getDb()
+    await db.delete(IMAGE_STORE, entityId)
+  },
+
+  /** Check if a photo exists for this entityId */
+  async has(entityId) {
+    const db = await getDb()
+    const blob = await db.get(IMAGE_STORE, entityId)
+    return !!blob
+  },
 }
 
 /**
@@ -138,25 +202,51 @@ export const mealSlotsRepo = {
 
 // ── Feeding Logs ──
 export const feedingLogsRepo = {
-  list({ limit = 100, offset = 0 } = {}) {
+  async list({ limit = 100, offset = 0 } = {}) {
     const all = sortDesc(get(KEYS.feedingLogs) || [])
     const items = all.slice(offset, offset + limit)
-    return { items, total: all.length }
+    // Load photos from IndexedDB for each item
+    const itemsWithPhotos = await Promise.all(
+      items.map(async (log) => {
+        if (!log.photo) return log
+        const stored = await imageStore.get(log.id)
+        return stored ? { ...log, photo: stored } : log
+      }),
+    )
+    return { items: itemsWithPhotos, total: all.length }
   },
-  get(id) {
-    return (get(KEYS.feedingLogs) || []).find(l => l.id === id) || null
+  async get(id) {
+    const log = (get(KEYS.feedingLogs) || []).find(l => l.id === id) || null
+    if (!log) return null
+    if (!log.photo) return log
+    const stored = await imageStore.get(log.id)
+    return stored ? { ...log, photo: stored } : log
   },
-  create(log) {
+  async create(log) {
     const all = get(KEYS.feedingLogs) || []
     const newLog = { ...log, id: genId() }
+    // Save photo to IndexedDB if present
+    if (newLog.photo) {
+      await imageStore.put(newLog.id, newLog.photo)
+    }
     set(KEYS.feedingLogs, [newLog, ...all])
     return newLog
   },
-  update(id, updates) {
+  async update(id, updates) {
     const all = get(KEYS.feedingLogs) || []
-    set(KEYS.feedingLogs, all.map(l => (l.id === id ? { ...l, ...updates } : l)))
+    const existing = all.find(l => l.id === id)
+    if (!existing) return
+    const updated = { ...existing, ...updates }
+    // Handle photo changes
+    if (updates.photo) {
+      await imageStore.put(id, updates.photo)
+    } else if (updates.photo === null || updates.photo === undefined) {
+      await imageStore.delete(id)
+    }
+    set(KEYS.feedingLogs, all.map(l => (l.id === id ? updated : l)))
   },
-  delete(id) {
+  async delete(id) {
+    await imageStore.delete(id)
     set(KEYS.feedingLogs, (get(KEYS.feedingLogs) || []).filter(l => l.id !== id))
   },
 }
