@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { feedingLogsRepo, recipesRepo } from '../lib/repository'
+import { useState, useEffect, useRef } from 'react'
+import { feedingLogsRepo, recipesRepo, localDate, parseLocalDate, compressImage } from '../lib/repository'
 import ConfirmModal from '../components/ConfirmModal'
 
 const LOG_AMOUNTS = ['Tasted', 'Ate some', 'Ate most', 'Ate all', 'Refused']
@@ -12,18 +12,23 @@ export default function Diary() {
   const [showForm, setShowForm] = useState(false)
   const [showEdit, setShowEdit] = useState(null)
   const [form, setForm] = useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: localDate(),
     time: '09:00',
     recipeId: '',
     amount: 'Tasted',
     reaction: 'None',
     notes: '',
     favorite: false,
+    photo: null,
   })
   const [editForm, setEditForm] = useState({})
   const [filter, setFilter] = useState('All')
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [loadCount, setLoadCount] = useState(14) // days to show
+  const [photoPreview, setPhotoPreview] = useState(null)
+  const fileInputRef = useRef(null)
+  const editFileInputRef = useRef(null)
+  const [expandedPhoto, setExpandedPhoto] = useState(null)
 
   useEffect(() => {
     const { items, total } = feedingLogsRepo.list()
@@ -31,22 +36,32 @@ export default function Diary() {
     setTotalLogs(total)
   }, [])
 
+  const handlePhotoSelect = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const compressed = await compressImage(file)
+    setPhotoPreview(compressed)
+    setForm({ ...form, photo: compressed })
+  }
+
   const handleAdd = (e) => {
     e.preventDefault()
-    feedingLogsRepo.create({ ...form, date: form.date || new Date().toISOString().slice(0, 10) })
+    feedingLogsRepo.create({ ...form, date: form.date || localDate() })
     const { items, total } = feedingLogsRepo.list()
     setLogs(items)
     setTotalLogs(total)
     setShowForm(false)
     setForm({
-      date: new Date().toISOString().slice(0, 10),
+      date: localDate(),
       time: '09:00',
       recipeId: '',
       amount: 'Tasted',
       reaction: 'None',
       notes: '',
       favorite: false,
+      photo: null,
     })
+    setPhotoPreview(null)
   }
 
   const handleToggleFav = (id) => {
@@ -71,6 +86,7 @@ export default function Diary() {
       amount: editForm.amount,
       reaction: editForm.reaction,
       notes: editForm.notes,
+      photo: editForm.photo,
     })
     const { items, total } = feedingLogsRepo.list()
     setLogs(items)
@@ -114,7 +130,7 @@ export default function Diary() {
 
   const hasMore = visibleDates.length < allDates.length
 
-  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayKey = localDate()
 
   return (
     <div className="pb-24 pt-6 px-4 max-w-lg mx-auto space-y-4">
@@ -168,7 +184,7 @@ export default function Diary() {
       {Object.entries(grouped).map(([date, dayLogs]) => (
         <div key={date}>
           <div className={`text-xs font-semibold mb-2 px-1 ${date === todayKey ? 'text-blue-600' : 'text-gray-500'}`}>
-            {date === todayKey ? 'Today' : new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            {date === todayKey ? 'Today' : parseLocalDate(date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           </div>
           <div className="space-y-2">
             {dayLogs.sort((a, b) => (a.time || '').localeCompare(b.time || '')).map(log => {
@@ -193,6 +209,18 @@ export default function Diary() {
                         )}
                       </div>
                       {log.notes && <div className="text-xs text-gray-400 mt-1 italic">{log.notes}</div>}
+                      {log.photo && (
+                        <button
+                          onClick={() => setExpandedPhoto(log.photo)}
+                          className="mt-2 w-full aspect-video rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                        >
+                          <img
+                            src={log.photo}
+                            alt="Feeding photo"
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => handleEdit(log)}
@@ -284,6 +312,43 @@ export default function Diary() {
                 <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2}
                   className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none" />
               </label>
+              {/* Photo upload */}
+              <div>
+                <span className="text-xs text-gray-500">Photo</span>
+                <div className="mt-1 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 active:bg-gray-50 transition-colors"
+                  >
+                    <span className="text-lg">📷</span>
+                    {photoPreview ? 'Change photo' : 'Add photo'}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoSelect}
+                    className="hidden"
+                  />
+                  {photoPreview && (
+                    <div className="relative group">
+                      <img
+                        src={photoPreview}
+                        alt="Preview"
+                        className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setPhotoPreview(null); setForm({...form, photo: null}) }}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)}
                   className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600">
@@ -352,6 +417,48 @@ export default function Diary() {
                   <textarea value={editForm.notes || ''} onChange={e => setEditForm({...editForm, notes: e.target.value})} rows={2}
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none" />
                 </label>
+                {/* Edit photo */}
+                <div>
+                  <span className="text-xs text-gray-500">Photo</span>
+                  <div className="mt-1 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => editFileInputRef.current?.click()}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 active:bg-gray-50 transition-colors"
+                    >
+                      <span className="text-lg">📷</span>
+                      {editForm.photo ? 'Change photo' : 'Add photo'}
+                    </button>
+                    <input
+                      ref={editFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        const compressed = await compressImage(file)
+                        setEditForm({ ...editForm, photo: compressed })
+                      }}
+                      className="hidden"
+                    />
+                    {editForm.photo && (
+                      <div className="relative group">
+                        <img
+                          src={editForm.photo}
+                          alt="Preview"
+                          className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEditForm({ ...editForm, photo: null })}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => setShowEdit(null)}
                     className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600">
@@ -376,6 +483,26 @@ export default function Diary() {
         title="Delete this log?"
         message={`This will remove "${confirmDelete?.name}" from your diary.`}
       />
+
+      {/* Expanded Photo Modal */}
+      {expandedPhoto && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/80" onClick={() => setExpandedPhoto(null)} />
+          <div className="relative z-10 w-full max-w-lg p-4 flex items-center justify-center">
+            <img
+              src={expandedPhoto}
+              alt="Feeding photo"
+              className="max-w-full max-h-[85vh] rounded-xl object-contain"
+            />
+            <button
+              onClick={() => setExpandedPhoto(null)}
+              className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-gray-900/70 text-white text-sm flex items-center justify-center hover:bg-gray-900/90 transition-colors"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

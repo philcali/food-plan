@@ -6,10 +6,62 @@
 // MealSlots: returns all, UI slices by week
 // Ordering: descending by default (newest first)
 
+/**
+ * Format a Date as YYYY-MM-DD in the user's local timezone.
+ * Uses 'en-CA' locale which produces YYYY-MM-DD natively.
+ */
+export function localDate(d = new Date()) {
+  return d.toLocaleDateString('en-CA')
+}
+
+/**
+ * Parse a YYYY-MM-DD string back to a Date at local midnight.
+ * Avoids UTC midnight pitfalls — treats the string as local time.
+ */
+export function parseLocalDate(str) {
+  const [y, m, d] = str.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
 const KEYS = {
   recipes: 'fp_recipes',
   mealSlots: 'fp_meal_slots',
   feedingLogs: 'fp_feeding_logs',
+}
+
+/**
+ * Compress an image file to a JPEG data URL.
+ * Reduces file size to keep localStorage from filling up.
+ * @param {File} file - The image file to compress
+ * @param {number} maxWidth - Maximum width in pixels (default 800)
+ * @param {number} quality - JPEG quality 0-1 (default 0.6)
+ * @returns {Promise<string>} Base64 data URL of compressed image
+ */
+export async function compressImage(file, maxWidth = 800, quality = 0.6) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        let width = img.width
+        let height = img.height
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width
+          width = maxWidth
+        }
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      }
+      img.onerror = () => reject(new Error('Failed to load image'))
+      img.src = e.target.result
+    }
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsDataURL(file)
+  })
 }
 
 function get(key) {
@@ -129,7 +181,7 @@ export function seedIfEmpty() {
 
     // Seed demo meal slots if empty
     if ((get(KEYS.mealSlots) || []).length === 0) {
-      const day = new Date().toISOString().slice(0, 10)
+      const day = localDate()
       const slotSeeds = [
         { id: 'slot1', day, time: '09:00', recipeId: 'demo1', notes: 'First morning snack' },
         { id: 'slot2', day, time: '12:00', recipeId: 'demo3', notes: 'Lunch time' },

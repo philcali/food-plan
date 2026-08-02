@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { recipesRepo, mealSlotsRepo, feedingLogsRepo } from '../lib/repository'
+import { recipesRepo, mealSlotsRepo, feedingLogsRepo, localDate } from '../lib/repository'
 
 function getWeekDays() {
   const now = new Date()
@@ -10,7 +10,7 @@ function getWeekDays() {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
-    return { key: d.toISOString().slice(0, 10), label: names[i], date: d }
+    return { key: localDate(d), label: names[i], date: d }
   })
 }
 
@@ -19,7 +19,7 @@ export default function Dashboard() {
   const slots = mealSlotsRepo.list()
   const logs = feedingLogsRepo.list().items
   const weekDays = getWeekDays()
-  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayKey = localDate()
 
   // Stats
   const uniqueFoods = new Set(logs.map(l => l.recipeId)).size

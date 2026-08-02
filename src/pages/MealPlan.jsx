@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { recipesRepo, mealSlotsRepo, feedingLogsRepo } from '../lib/repository'
+import { recipesRepo, mealSlotsRepo, feedingLogsRepo, localDate } from '../lib/repository'
 import ConfirmModal from '../components/ConfirmModal'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -12,7 +12,7 @@ function getWeekDays() {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
-    return { key: d.toISOString().slice(0, 10), label: DAYS[i], date: d }
+    return { key: localDate(d), label: DAYS[i], date: d }
   })
 }
 
@@ -76,7 +76,7 @@ function SlotCard({ slot, recipe, onRemove, refreshSlots, onEdit, onLog }) {
 }
 
 export default function MealPlan() {
-  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayKey = localDate()
   const [recipes, setRecipes] = useState(recipesRepo.list().items)
   const [slots, setSlots] = useState(mealSlotsRepo.list())
   const [showAdd, setShowAdd] = useState(false)
@@ -164,7 +164,7 @@ export default function MealPlan() {
 
   const handleSaveLog = (e) => {
     e.preventDefault()
-    feedingLogsRepo.create({ ...logForm, date: logForm.date || new Date().toISOString().slice(0, 10) })
+    feedingLogsRepo.create({ ...logForm, date: logForm.date || localDate() })
     setShowLogFeed(null)
   }
 
