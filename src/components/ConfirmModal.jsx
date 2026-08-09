@@ -1,4 +1,4 @@
-export default function ConfirmModal({ open, onClose, onConfirm, title, message }) {
+export default function ConfirmModal({ open, onClose, onConfirm, title, message, confirmLabel = 'Delete' }) {
   if (!open) return null
 
   return (

@@ -251,6 +251,129 @@ export const feedingLogsRepo = {
   },
 }
 
+// ── Export / Import ──
+
+/**
+ * Export all app data as a JSON object.
+ * Includes localStorage data + images from IndexedDB.
+ */
+export async function exportData() {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    localStorage: {},
+    images: {},
+  }
+
+  // Snapshot localStorage
+  for (const key of Object.values(KEYS)) {
+    const raw = localStorage.getItem(key)
+    if (raw) data.localStorage[key] = JSON.parse(raw)
+  }
+
+  // Snapshot images from IndexedDB
+  const db = await getDb()
+  const keys = await db.getAllKeys(IMAGE_STORE)
+  for (const id of keys) {
+    const blob = await db.get(IMAGE_STORE, id)
+    if (blob) {
+      data.images[id] = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(blob)
+      })
+    }
+  }
+
+  return data
+}
+
+/**
+ * Export only recipes as JSON.
+ * Recipes don't carry photos in this app — this is for sharing
+ * your food collection with another user.
+ */
+export async function exportRecipesOnly() {
+  const recipes = get(KEYS.recipes) || []
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    type: 'recipes',
+    localStorage: { [KEYS.recipes]: recipes },
+    images: {},
+  }
+}
+
+/**
+ * Parse and validate an exported data object.
+ * Returns { valid: true, preview } or { valid: false, error }
+ */
+export function validateImport(data) {
+  if (!data || typeof data !== 'object') return { valid: false, error: 'Invalid data format' }
+  if (data.version !== 1) return { valid: false, error: 'Unsupported export version' }
+
+  const preview = {
+    recipes: (data.localStorage?.[KEYS.recipes] || []).length,
+    mealSlots: (data.localStorage?.[KEYS.mealSlots] || []).length,
+    feedingLogs: (data.localStorage?.[KEYS.feedingLogs] || []).length,
+    images: Object.keys(data.images || {}).length,
+    type: data.type || 'full',
+  }
+
+  return { valid: true, preview }
+}
+
+/**
+ * Import data into the app.
+ * @param {object} data - Parsed export JSON
+ * @param {boolean} destructive - If true, wipe all data first
+ */
+export async function importData(data, destructive = false) {
+  if (destructive) {
+    // Wipe localStorage
+    for (const key of Object.values(KEYS)) {
+      localStorage.removeItem(key)
+    }
+    // Wipe images from IndexedDB
+    const db = await getDb()
+    const keys = await db.getAllKeys(IMAGE_STORE)
+    for (const id of keys) {
+      await db.delete(IMAGE_STORE, id)
+    }
+  }
+
+  // Restore localStorage
+  if (data.localStorage) {
+    for (const [key, value] of Object.entries(data.localStorage)) {
+      if (value !== undefined) {
+        localStorage.setItem(key, JSON.stringify(value))
+      }
+    }
+  }
+
+  // Restore images
+  if (data.images) {
+    for (const [id, dataUrl] of Object.entries(data.images)) {
+      await imageStore.put(id, dataUrl)
+    }
+  }
+}
+
+/**
+ * Clear all app data (localStorage + IndexedDB).
+ */
+export async function clearAllData() {
+  for (const key of Object.values(KEYS)) {
+    localStorage.removeItem(key)
+  }
+  const db = await getDb()
+  const keys = await db.getAllKeys(IMAGE_STORE)
+  for (const id of keys) {
+    await db.delete(IMAGE_STORE, id)
+  }
+}
+
 // ── Seed data for demo ──
 export function seedIfEmpty() {
   if ((get(KEYS.recipes) || []).length === 0) {
