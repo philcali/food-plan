@@ -6,6 +6,7 @@ import Recipes from './pages/Recipes'
 import RecipeDetail from './pages/RecipeDetail'
 import MealPlan from './pages/MealPlan'
 import Diary from './pages/Diary'
+import Settings from './pages/Settings'
 
 export default function App() {
   seedIfEmpty()
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/recipes/:id" element={<RecipeDetail />} />
           <Route path="/plan" element={<MealPlan />} />
           <Route path="/diary" element={<Diary />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
         <BottomNav />
       </div>
