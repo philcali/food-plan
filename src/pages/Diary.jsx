@@ -7,7 +7,6 @@ const REACTIONS = ['None', 'Mild rash', 'Vomiting', 'Diarrhea', 'Gas', 'Other']
 
 export default function Diary() {
   const [logs, setLogs] = useState([])
-  const [totalLogs, setTotalLogs] = useState(0)
   const [recipes] = useState(recipesRepo.list().items)
   const [showForm, setShowForm] = useState(false)
   const [showEdit, setShowEdit] = useState(null)
@@ -32,9 +31,8 @@ export default function Diary() {
 
   useEffect(() => {
     ;(async () => {
-      const { items, total } = await feedingLogsRepo.list()
+      const { items } = await feedingLogsRepo.list()
       setLogs(items)
-      setTotalLogs(total)
     })()
   }, [])
 
@@ -49,9 +47,8 @@ export default function Diary() {
   const handleAdd = async (e) => {
     e.preventDefault()
     await feedingLogsRepo.create({ ...form, date: form.date || localDate() })
-    const { items, total } = await feedingLogsRepo.list()
+    const { items } = await feedingLogsRepo.list()
     setLogs(items)
-    setTotalLogs(total)
     setShowForm(false)
     setForm({
       date: localDate(),
@@ -69,9 +66,8 @@ export default function Diary() {
   const handleToggleFav = async (id) => {
     const log = logs.find(l => l.id === id)
     await feedingLogsRepo.update(id, { favorite: !log.favorite })
-    const { items, total } = await feedingLogsRepo.list()
+    const { items } = await feedingLogsRepo.list()
     setLogs(items)
-    setTotalLogs(total)
   }
 
   const handleEdit = (log) => {
@@ -90,9 +86,8 @@ export default function Diary() {
       notes: editForm.notes,
       photo: editForm.photo,
     })
-    const { items, total } = await feedingLogsRepo.list()
+    const { items } = await feedingLogsRepo.list()
     setLogs(items)
-    setTotalLogs(total)
     setShowEdit(null)
   }
 
@@ -102,9 +97,8 @@ export default function Diary() {
 
   const confirmDeleteLog = async () => {
     await feedingLogsRepo.delete(confirmDelete.id)
-    const { items, total } = await feedingLogsRepo.list()
+    const { items } = await feedingLogsRepo.list()
     setLogs(items)
-    setTotalLogs(total)
     setConfirmDelete(null)
   }
 

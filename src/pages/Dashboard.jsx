@@ -20,7 +20,7 @@ export default function Dashboard() {
   const slots = mealSlotsRepo.list()
   const [logs, setLogs] = useState([])
   const weekDays = getWeekDays()
-  const todayKey = localDate()
+  const _todayKey = localDate()
 
   useEffect(() => {
     feedingLogsRepo.list().then(({ items }) => setLogs(items))
