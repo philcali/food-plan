@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { recipesRepo, mealSlotsRepo, feedingLogsRepo, localDate } from '../lib/repository'
 import ConfirmModal from '../components/ConfirmModal'
 
@@ -104,6 +104,7 @@ export default function MealPlan() {
   const [logForm, setLogForm] = useState({
     date: '', time: '', recipeId: '', amount: 'Tasted', reaction: 'None', notes: '',
   })
+  const datePickerRef = useRef(null)
 
   useEffect(() => {
     setRecipes(recipesRepo.list().items)
@@ -199,6 +200,12 @@ export default function MealPlan() {
     setSelectedDay(todayKey)
   }
 
+  const handleDatePick = (e) => {
+    const picked = getMonday(e.target.value)
+    setCurrentWeekStart(picked)
+    setSelectedDay(localDate(picked))
+  }
+
   return (
     <div className="pb-24 pt-6 px-4 max-w-lg mx-auto space-y-4">
       {/* Header */}
@@ -212,7 +219,12 @@ export default function MealPlan() {
             ‹
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">{formatWeekRange(weekDays)}</span>
+            <label
+              onClick={() => datePickerRef.current?.showPicker()}
+              className="text-sm font-medium text-gray-700 hover:text-blue-600 cursor-pointer hover:bg-blue-50 px-2 py-0.5 rounded-lg transition-colors"
+              title="Pick a date">
+              {formatWeekRange(weekDays)}
+            </label>
             {selectedDay !== todayKey && (
               <button onClick={goToday}
                 className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium hover:bg-blue-100 transition-colors">
@@ -225,6 +237,12 @@ export default function MealPlan() {
             ›
           </button>
         </div>
+        <input
+          ref={datePickerRef}
+          type="date"
+          className="hidden"
+          onChange={handleDatePick}
+        />
         <div className="flex justify-between text-xs text-gray-500">
           {weekDays.map(d => (
             <button key={d.key}

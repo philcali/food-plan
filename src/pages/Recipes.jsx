@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { recipesRepo } from '../lib/repository'
 import ConfirmModal from '../components/ConfirmModal'
@@ -14,6 +14,7 @@ export default function Recipes() {
   })
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [loadCount, setLoadCount] = useState(20)
+  const [activeFilter, setActiveFilter] = useState('All')
 
   useEffect(() => {
     const { items, total } = recipesRepo.list()
@@ -21,10 +22,20 @@ export default function Recipes() {
     setTotalRecipes(total)
   }, [])
 
-  const filtered = recipes.filter(r =>
-    r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.ingredient?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = useMemo(() => recipes.filter(r => {
+    const matchesSearch =
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.ingredient?.toLowerCase().includes(search.toLowerCase())
+    if (!matchesSearch) return false
+    switch (activeFilter) {
+      case 'Safe': return !r.allergens?.length
+      case 'Allergens': return r.allergens?.length > 0
+      case '6mo+': return r.ageMin <= 6
+      case '8mo+': return r.ageMin <= 8
+      case '10mo+': return r.ageMin <= 10
+      default: return true
+    }
+  }), [recipes, search, activeFilter])
 
   const handleAdd = (e) => {
     e.preventDefault()
@@ -85,7 +96,12 @@ export default function Recipes() {
         {['All', 'Safe', 'Allergens', '6mo+', '8mo+', '10mo+'].map(filter => (
           <button
             key={filter}
-            className="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 text-gray-600 whitespace-nowrap active:bg-gray-100"
+            onClick={() => setActiveFilter(filter)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium border whitespace-nowrap transition-colors ${
+              activeFilter === filter
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'border-gray-200 text-gray-600 active:bg-gray-100'
+            }`}
           >
             {filter}
           </button>
