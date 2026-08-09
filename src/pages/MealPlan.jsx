@@ -4,16 +4,28 @@ import ConfirmModal from '../components/ConfirmModal'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-function getWeekDays() {
-  const now = new Date()
-  const day = now.getDay()
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - ((day + 6) % 7))
+function getWeekDays(mondayDate) {
+  const monday = new Date(mondayDate)
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
     return { key: localDate(d), label: DAYS[i], date: d }
   })
+}
+
+function getMonday(date) {
+  const d = new Date(date)
+  const day = d.getDay()
+  d.setDate(d.getDate() - ((day + 6) % 7))
+  return d
+}
+
+function formatWeekRange(weekDays) {
+  const first = weekDays[0].date
+  const last = weekDays[6].date
+  const fmt = (d) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return `${fmt(first)} – ${fmt(last)}`
 }
 
 function EmptySlot({ onClick }) {
@@ -83,7 +95,8 @@ export default function MealPlan() {
   const [search, setSearch] = useState('')
   const [selectedSlotId, setSelectedSlotId] = useState(null)
   const [selectedDay, setSelectedDay] = useState(todayKey)
-  const [weekDays] = useState(() => getWeekDays())
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => getMonday(new Date()))
+  const weekDays = useMemo(() => getWeekDays(currentWeekStart), [currentWeekStart])
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [showEditSlot, setShowEditSlot] = useState(null)
   const [showLogFeed, setShowLogFeed] = useState(null)
@@ -104,7 +117,7 @@ export default function MealPlan() {
     ), [recipes, search])
 
   const refreshSlots = () => setSlots(mealSlotsRepo.list())
-  const refreshRecipes = () => setRecipes(recipesRepo.list().items)
+  const _refreshRecipes = () => setRecipes(recipesRepo.list().items)
 
   const handleAddToSlot = (recipeId) => {
     if (selectedSlotId) {
@@ -116,7 +129,7 @@ export default function MealPlan() {
     }
   }
 
-  const handleAddSlot = (dayKey) => {
+  const _handleAddSlot = (dayKey) => {
     const newSlot = { day: dayKey, time: '' }
     const created = mealSlotsRepo.create(newSlot)
     refreshSlots()
@@ -168,6 +181,24 @@ export default function MealPlan() {
     setShowLogFeed(null)
   }
 
+  const goPrevWeek = () => {
+    const prev = new Date(currentWeekStart)
+    prev.setDate(prev.getDate() - 7)
+    setCurrentWeekStart(prev)
+  }
+
+  const goNextWeek = () => {
+    const next = new Date(currentWeekStart)
+    next.setDate(next.getDate() + 7)
+    setCurrentWeekStart(next)
+  }
+
+  const goToday = () => {
+    const todayMonday = getMonday(new Date())
+    setCurrentWeekStart(todayMonday)
+    setSelectedDay(todayKey)
+  }
+
   return (
     <div className="pb-24 pt-6 px-4 max-w-lg mx-auto space-y-4">
       {/* Header */}
@@ -175,6 +206,25 @@ export default function MealPlan() {
 
       {/* Week overview */}
       <div className="card p-3">
+        <div className="flex items-center justify-between mb-2">
+          <button onClick={goPrevWeek}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+            ‹
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">{formatWeekRange(weekDays)}</span>
+            {selectedDay !== todayKey && (
+              <button onClick={goToday}
+                className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium hover:bg-blue-100 transition-colors">
+                Go to Today
+              </button>
+            )}
+          </div>
+          <button onClick={goNextWeek}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+            ›
+          </button>
+        </div>
         <div className="flex justify-between text-xs text-gray-500">
           {weekDays.map(d => (
             <button key={d.key}
