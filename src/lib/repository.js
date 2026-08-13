@@ -266,6 +266,13 @@ export const feedingLogsRepo = {
   },
 }
 
+// ── Recipe try count ──
+
+export function getRecipeTryCount(recipeId) {
+  const logs = get(KEYS.feedingLogs) || []
+  return logs.filter(l => l.recipeId === recipeId).length
+}
+
 // ── Export / Import ──
 
 /**

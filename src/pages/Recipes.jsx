@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { recipesRepo } from '../lib/repository'
+import { recipesRepo, getRecipeTryCount } from '../lib/repository'
 import ConfirmModal from '../components/ConfirmModal'
 
 export default function Recipes() {
@@ -21,6 +21,12 @@ export default function Recipes() {
     setRecipes(items)
     setTotalRecipes(total)
   }, [])
+
+  const tryCounts = useMemo(() => {
+    const counts = {}
+    recipes.forEach(r => { counts[r.id] = getRecipeTryCount(r.id) })
+    return counts
+  }, [recipes])
 
   const filtered = useMemo(() => recipes.filter(r => {
     const matchesSearch =
@@ -122,6 +128,9 @@ export default function Recipes() {
                   {r.allergens?.length > 0 && (
                     <span className="ml-1.5 text-amber-600 font-medium">⚠ {r.allergens.join(', ')}</span>
                   )}
+                </div>
+                <div className="text-xs text-gray-400 mt-0.5">
+                  🍴 tried {tryCounts[r.id]} time{tryCounts[r.id] !== 1 ? 's' : ''}
                 </div>
               </div>
             </Link>
