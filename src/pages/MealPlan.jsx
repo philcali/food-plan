@@ -114,7 +114,7 @@ export default function MealPlan() {
   const filtered = useMemo(() =>
     recipes.filter(r =>
       r.name.toLowerCase().includes(search.toLowerCase()) ||
-      r.ingredient?.toLowerCase().includes(search.toLowerCase())
+      r.ingredients?.some(i => i.toLowerCase().includes(search.toLowerCase()))
     ), [recipes, search])
 
   const refreshSlots = () => setSlots(mealSlotsRepo.list())

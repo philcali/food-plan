@@ -67,7 +67,7 @@ src/
 
 | Model | Fields |
 |---|---|
-| **Recipe** | `id`, `name`, `emoji`, `ingredient`, `ageMin`, `texture`, `allergens[]`, `prepNotes`, `safe`, `createdAt` |
+| **Recipe** | `id`, `name`, `emoji`, `ingredients[]`, `ageMin`, `texture`, `allergens[]`, `prepNotes`, `safe`, `createdAt` |
 | **MealSlot** | `id`, `day` (YYYY-MM-DD), `time` (HH:MM), `recipeId`, `notes` |
 | **FeedingLog** | `id`, `date` (YYYY-MM-DD), `time` (HH:MM), `recipeId`, `amount`, `reaction`, `notes`, `favorite`, `photo` |
 

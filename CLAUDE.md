@@ -61,7 +61,7 @@ Seed data is auto-populated via `seedIfEmpty()` when localStorage is empty (10 d
 
 ### Key Data Models
 
-**Recipe**: `{ id, name, emoji, ingredient, ageMin, texture, allergens[], prepNotes, safe, createdAt }`
+**Recipe**: `{ id, name, emoji, ingredients[], ageMin, texture, allergens[], prepNotes, safe, createdAt }`
 
 **MealSlot**: `{ id, day (YYYY-MM-DD), time (HH:MM), recipeId, notes }`
 

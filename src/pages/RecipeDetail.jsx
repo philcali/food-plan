@@ -11,7 +11,7 @@ export default function RecipeDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [editForm, setEditForm] = useState({
-    name: '', emoji: '', ingredient: '', ageMin: 6,
+    name: '', emoji: '', ingredients: [], _ingredient: '', ageMin: 6,
     texture: 'mashed', allergens: '', prepNotes: '', safe: true,
   })
 
@@ -25,7 +25,8 @@ export default function RecipeDetail() {
       setEditForm({
         name: recipe.name || '',
         emoji: recipe.emoji || '',
-        ingredient: recipe.ingredient || '',
+        ingredients: recipe.ingredients || [],
+        _ingredient: '',
         ageMin: recipe.ageMin || 6,
         texture: recipe.texture || 'mashed',
         allergens: (recipe.allergens || []).join(', '),
@@ -107,10 +108,19 @@ export default function RecipeDetail() {
         </div>
       )}
 
-      {/* Ingredient */}
+      {/* Ingredients */}
       <div className="card p-4">
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Ingredient</h2>
-        <p className="text-sm text-gray-700 capitalize">{recipe.ingredient || '—'}</p>
+        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Ingredients</h2>
+        <div className="flex flex-wrap gap-1.5">
+          {(recipe.ingredients || []).length > 0
+            ? recipe.ingredients.map((ing, i) => (
+                <span key={i} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-lg font-medium capitalize">
+                  {ing}
+                </span>
+              ))
+            : <span className="text-sm text-gray-300">—</span>
+          }
+        </div>
       </div>
 
       {/* Confirm Delete Modal */}
@@ -132,12 +142,18 @@ export default function RecipeDetail() {
               const allergens = editForm.allergens
                 ? editForm.allergens.split(',').map(a => a.trim()).filter(Boolean)
                 : []
+              const ingredients = editForm.ingredients.filter(Boolean)
               recipesRepo.update(recipe.id, {
-                ...editForm, allergens,
-                emoji: editForm.emoji || '🍽️',
-                ageMin: Number(editForm.ageMin) || 6,
+                name: editForm.name, emoji: editForm.emoji || '🍽️', ingredients,
+                ageMin: Number(editForm.ageMin) || 6, texture: editForm.texture,
+                allergens, prepNotes: editForm.prepNotes, safe: editForm.safe ?? true,
               })
-              setRecipe({ ...recipe, ...editForm, allergens, emoji: editForm.emoji || '🍽️', ageMin: Number(editForm.ageMin) || 6 })
+              setRecipe(prev => ({
+                ...prev, name: editForm.name, emoji: editForm.emoji || '🍽️',
+                ingredients, ageMin: Number(editForm.ageMin) || 6,
+                texture: editForm.texture, allergens, prepNotes: editForm.prepNotes,
+                safe: editForm.safe ?? true,
+              }))
               setShowEdit(false)
             }} className="p-5 space-y-4">
               <h2 className="text-lg font-semibold text-gray-900">Edit Recipe</h2>
@@ -153,11 +169,37 @@ export default function RecipeDetail() {
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" />
                 </label>
               </div>
-              <label className="space-y-1 block">
-                <span className="text-xs text-gray-500">Ingredient</span>
-                <input value={editForm.ingredient} onChange={e => setEditForm({...editForm, ingredient: e.target.value})}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" />
-              </label>
+              <div>
+                <span className="text-xs text-gray-500">Ingredients</span>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {editForm.ingredients.map((ing, i) => (
+                    <div key={i} className="flex items-center gap-1">
+                      <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-lg font-medium">
+                        {ing}
+                      </span>
+                      <button type="button" onClick={() =>
+                        setEditForm({...editForm, ingredients: editForm.ingredients.filter((_, j) => j !== i)})
+                      } className="text-gray-300 hover:text-red-400 text-xs">✕</button>
+                    </div>
+                  ))}
+                  <input value={editForm._ingredient || ''} onChange={e => setEditForm({...editForm, _ingredient: e.target.value})}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && editForm._ingredient?.trim()) {
+                        setEditForm({...editForm, ingredients: [...editForm.ingredients, editForm._ingredient.trim()], _ingredient: ''})
+                        e.preventDefault()
+                      }
+                    }}
+                    placeholder={editForm.ingredients.length === 0 ? 'Type & press Enter' : 'Add another…'}
+                    className="w-36 px-3 py-1.5 rounded-lg border border-gray-200 text-sm" />
+                  <button type="button" onClick={() => {
+                    if (editForm._ingredient?.trim()) {
+                      setEditForm({...editForm, ingredients: [...editForm.ingredients, editForm._ingredient.trim()], _ingredient: ''})
+                    }
+                  }} className="px-2 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-500 hover:text-blue-500 active:bg-gray-50">
+                    +
+                  </button>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1">
                   <span className="text-xs text-gray-500">Min Age (months)</span>

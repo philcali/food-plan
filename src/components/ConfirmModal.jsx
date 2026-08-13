@@ -14,7 +14,7 @@ export default function ConfirmModal({ open, onClose, onConfirm, title, message,
           </button>
           <button onClick={() => { onConfirm(); onClose() }}
             className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium active:scale-[0.98] transition-transform">
-            Delete
+            {confirmLabel}
           </button>
         </div>
       </div>

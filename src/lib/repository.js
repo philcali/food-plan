@@ -152,21 +152,36 @@ function sortDesc(items) {
   })
 }
 
+// ── Recipe normalization ──
+// Handles the transition from single `ingredient` (string) to `ingredients` (array).
+// Old data with `ingredient` is normalized on read; new data uses `ingredients[]`.
+function normalizeRecipe(r) {
+  return {
+    ...r,
+    ingredient: r.ingredient || (r.ingredients?.[0] ?? ''),
+    ingredients: r.ingredients || (r.ingredient ? [r.ingredient] : []),
+  }
+}
+
+function normalizeRecipes(items) {
+  return items.map(normalizeRecipe)
+}
+
 // ── Recipes ──
 export const recipesRepo = {
   list({ limit = 100, offset = 0 } = {}) {
-    const all = sortDesc(get(KEYS.recipes) || [])
+    const all = normalizeRecipes(sortDesc(get(KEYS.recipes) || []))
     const items = all.slice(offset, offset + limit)
     return { items, total: all.length }
   },
   get(id) {
-    return (get(KEYS.recipes) || []).find(r => r.id === id) || null
+    return normalizeRecipe((get(KEYS.recipes) || []).find(r => r.id === id) || null)
   },
   create(recipe) {
     const all = get(KEYS.recipes) || []
     const newRecipe = { ...recipe, id: genId(), createdAt: new Date().toISOString() }
     set(KEYS.recipes, [newRecipe, ...all])
-    return newRecipe
+    return normalizeRecipe(newRecipe)
   },
   update(id, updates) {
     const all = get(KEYS.recipes) || []
@@ -379,16 +394,18 @@ export function seedIfEmpty() {
   if ((get(KEYS.recipes) || []).length === 0) {
     const now = new Date().toISOString()
     const seeds = [
-      { id: 'demo1', name: 'Avocado', emoji: '🥑', ingredient: 'avocado', ageMin: 6, texture: 'mashed', allergens: [], prepNotes: 'Mash ripe avocado with a fork. No salt or seasoning needed.', safe: true, createdAt: now },
-      { id: 'demo2', name: 'Banana', emoji: '🍌', ingredient: 'banana', ageMin: 6, texture: 'mashed', allergens: [], prepNotes: 'Mash ripe banana. Can be offered as strips for finger food.', safe: true, createdAt: now },
-      { id: 'demo3', name: 'Sweet Potato', emoji: '🍠', ingredient: 'sweet potato', ageMin: 6, texture: 'puree', allergens: [], prepNotes: 'Roast or steam until soft, then mash or puree.', safe: true, createdAt: now },
-      { id: 'demo4', name: 'Carrot', emoji: '🥕', ingredient: 'carrot', ageMin: 6, texture: 'puree', allergens: [], prepNotes: 'Steam until very soft, then puree. Can be offered as thick sticks for grasping.', safe: true, createdAt: now },
-      { id: 'demo5', name: 'Pear', emoji: '🍐', ingredient: 'pear', ageMin: 6, texture: 'mashed', allergens: [], prepNotes: 'Peel, cook until soft, then mash or offer as thin strips.', safe: true, createdAt: now },
-      { id: 'demo6', name: 'Apple', emoji: '🍎', ingredient: 'apple', ageMin: 6, texture: 'puree', allergens: [], prepNotes: 'Peel, steam until soft, then puree. Serve thin strips for finger food.', safe: true, createdAt: now },
-      { id: 'demo7', name: 'Egg Yolk', emoji: '🥚', ingredient: 'egg', ageMin: 8, texture: 'mashed', allergens: ['egg'], prepNotes: 'Hard boil, mash yolk with breast milk or formula. Introduce allergens early per pediatric guidance.', safe: false, createdAt: now },
-      { id: 'demo8', name: 'Peanut Butter', emoji: '🥜', ingredient: 'peanut butter', ageMin: 6, texture: 'thinned', allergens: ['peanut'], prepNotes: 'Thin with warm water to a pourable consistency. Never offer whole peanuts.', safe: false, createdAt: now },
-      { id: 'demo9', name: 'Zucchini', emoji: '🥒', ingredient: 'zucchini', ageMin: 6, texture: 'mashed', allergens: [], prepNotes: 'Steam until soft, mash or offer as thick strips.', safe: true, createdAt: now },
-      { id: 'demo10', name: 'Spinach', emoji: '🥬', ingredient: 'spinach', ageMin: 6, texture: 'puree', allergens: [], prepNotes: 'Steam and puree. Mix with a fruit to balance flavor.', safe: true, createdAt: now },
+      { id: 'demo1', name: 'Avocado', emoji: '🥑', ingredients: ['avocado'], ageMin: 6, texture: 'mashed', allergens: [], prepNotes: 'Mash ripe avocado with a fork. No salt or seasoning needed.', safe: true, createdAt: now },
+      { id: 'demo2', name: 'Banana', emoji: '🍌', ingredients: ['banana'], ageMin: 6, texture: 'mashed', allergens: [], prepNotes: 'Mash ripe banana. Can be offered as strips for finger food.', safe: true, createdAt: now },
+      { id: 'demo3', name: 'Sweet Potato', emoji: '🍠', ingredients: ['sweet potato'], ageMin: 6, texture: 'puree', allergens: [], prepNotes: 'Roast or steam until soft, then mash or puree.', safe: true, createdAt: now },
+      { id: 'demo4', name: 'Carrot', emoji: '🥕', ingredients: ['carrot'], ageMin: 6, texture: 'puree', allergens: [], prepNotes: 'Steam until very soft, then puree. Can be offered as thick sticks for grasping.', safe: true, createdAt: now },
+      { id: 'demo5', name: 'Pear', emoji: '🍐', ingredients: ['pear'], ageMin: 6, texture: 'mashed', allergens: [], prepNotes: 'Peel, cook until soft, then mash or offer as thin strips.', safe: true, createdAt: now },
+      { id: 'demo6', name: 'Apple', emoji: '🍎', ingredients: ['apple'], ageMin: 6, texture: 'puree', allergens: [], prepNotes: 'Peel, steam until soft, then puree. Serve thin strips for finger food.', safe: true, createdAt: now },
+      { id: 'demo7', name: 'Egg Yolk', emoji: '🥚', ingredients: ['egg'], ageMin: 8, texture: 'mashed', allergens: ['egg'], prepNotes: 'Hard boil, mash yolk with breast milk or formula. Introduce allergens early per pediatric guidance.', safe: false, createdAt: now },
+      { id: 'demo8', name: 'Peanut Butter', emoji: '🥜', ingredients: ['peanut butter'], ageMin: 6, texture: 'thinned', allergens: ['peanut'], prepNotes: 'Thin with warm water to a pourable consistency. Never offer whole peanuts.', safe: false, createdAt: now },
+      { id: 'demo9', name: 'Zucchini', emoji: '🥒', ingredients: ['zucchini'], ageMin: 6, texture: 'mashed', allergens: [], prepNotes: 'Steam until soft, mash or offer as thick strips.', safe: true, createdAt: now },
+      { id: 'demo10', name: 'Spinach', emoji: '🥬', ingredients: ['spinach'], ageMin: 6, texture: 'puree', allergens: [], prepNotes: 'Steam and puree. Mix with a fruit to balance flavor.', safe: true, createdAt: now },
+      { id: 'demo11', name: 'Banana Oat Pancakes', emoji: '🥞', ingredients: ['banana', 'oats'], ageMin: 8, texture: 'mashed', allergens: [], prepNotes: 'Mash banana, mix with rolled oats, cook on low heat. No eggs or sugar needed.', safe: true, createdAt: now },
+      { id: 'demo12', name: 'Sweet Potato & Apple Blend', emoji: '🍲', ingredients: ['sweet potato', 'apple'], ageMin: 6, texture: 'puree', allergens: [], prepNotes: 'Steam sweet potato and apple together, then puree until smooth.', safe: true, createdAt: now },
     ]
     set(KEYS.recipes, seeds)
 

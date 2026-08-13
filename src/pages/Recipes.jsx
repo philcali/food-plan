@@ -9,7 +9,7 @@ export default function Recipes() {
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
-    name: '', emoji: '', ingredient: '', ageMin: 6,
+    name: '', emoji: '', ingredients: [], ageMin: 6,
     texture: 'mashed', allergens: '', prepNotes: '', safe: true,
   })
   const [confirmDelete, setConfirmDelete] = useState(null)
@@ -25,7 +25,7 @@ export default function Recipes() {
   const filtered = useMemo(() => recipes.filter(r => {
     const matchesSearch =
       r.name.toLowerCase().includes(search.toLowerCase()) ||
-      r.ingredient?.toLowerCase().includes(search.toLowerCase())
+      r.ingredients?.some(i => i.toLowerCase().includes(search.toLowerCase()))
     if (!matchesSearch) return false
     switch (activeFilter) {
       case 'Safe': return !r.allergens?.length
@@ -42,16 +42,17 @@ export default function Recipes() {
     const allergens = form.allergens
       ? form.allergens.split(',').map(a => a.trim()).filter(Boolean)
       : []
+    const ingredients = form.ingredients.filter(Boolean)
     recipesRepo.create({
-      ...form, allergens,
-      emoji: form.emoji || '🍽️',
-      ageMin: Number(form.ageMin) || 6,
+      name: form.name, emoji: form.emoji || '🍽️', ingredients,
+      ageMin: Number(form.ageMin) || 6, texture: form.texture,
+      allergens, prepNotes: form.prepNotes, safe: form.safe ?? true,
     })
     const { items, total } = recipesRepo.list()
     setRecipes(items)
     setTotalRecipes(total)
     setShowForm(false)
-    setForm({ name: '', emoji: '', ingredient: '', ageMin: 6, texture: 'mashed', allergens: '', prepNotes: '', safe: true })
+    setForm({ name: '', emoji: '', ingredients: [], ageMin: 6, texture: 'mashed', allergens: '', prepNotes: '', safe: true })
   }
 
   const handleDelete = (id, name) => {
@@ -163,11 +164,37 @@ export default function Recipes() {
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" />
                 </label>
               </div>
-              <label className="space-y-1 block">
-                <span className="text-xs text-gray-500">Ingredient</span>
-                <input value={form.ingredient} onChange={e => setForm({...form, ingredient: e.target.value})}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" />
-              </label>
+              <div>
+                <span className="text-xs text-gray-500">Ingredients</span>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {form.ingredients.map((ing, i) => (
+                    <div key={i} className="flex items-center gap-1">
+                      <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-lg font-medium">
+                        {ing}
+                      </span>
+                      <button type="button" onClick={() =>
+                        setForm({ ...form, ingredients: form.ingredients.filter((_, j) => j !== i) })
+                      } className="text-gray-300 hover:text-red-400 text-xs">✕</button>
+                    </div>
+                  ))}
+                  <input value={form._ingredient || ''} onChange={e => setForm({...form, _ingredient: e.target.value})}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && form._ingredient?.trim()) {
+                        setForm({...form, ingredients: [...form.ingredients, form._ingredient.trim()], _ingredient: ''})
+                        e.preventDefault()
+                      }
+                    }}
+                    placeholder={form.ingredients.length === 0 ? 'Type & press Enter' : 'Add another…'}
+                    className="w-36 px-3 py-1.5 rounded-lg border border-gray-200 text-sm" />
+                  <button type="button" onClick={() => {
+                    if (form._ingredient?.trim()) {
+                      setForm({...form, ingredients: [...form.ingredients, form._ingredient.trim()], _ingredient: ''})
+                    }
+                  }} className="px-2 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-500 hover:text-blue-500 active:bg-gray-50">
+                    +
+                  </button>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1">
                   <span className="text-xs text-gray-500">Min Age (months)</span>
