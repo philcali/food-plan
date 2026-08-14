@@ -28,6 +28,8 @@ export default function Diary() {
   const fileInputRef = useRef(null)
   const editFileInputRef = useRef(null)
   const [expandedPhoto, setExpandedPhoto] = useState(null)
+  const [expandedLog, setExpandedLog] = useState(null)
+  const [viewMode, setViewMode] = useState('list') // 'list' | 'gallery'
 
   useEffect(() => {
     ;(async () => {
@@ -133,33 +135,44 @@ export default function Diary() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Diary</h1>
-        <button
-          onClick={() => setShowForm(true)}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-600 text-white text-lg font-medium active:scale-95 transition-transform"
-        >
-          +
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setViewMode(viewMode === 'gallery' ? 'list' : 'gallery')}
+            className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 active:scale-95 transition-transform"
+            title={viewMode === 'gallery' ? 'List view' : 'Gallery view'}
+          >
+            {viewMode === 'gallery' ? '📋' : '📷'}
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-600 text-white text-lg font-medium active:scale-95 transition-transform"
+          >
+            +
+          </button>
+        </div>
       </div>
 
       {/* Filter bar */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {['All', 'None', 'Mild rash', 'Vomiting', 'Diarrhea', 'Gas'].map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium border whitespace-nowrap transition-colors ${
-              filter === f
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'border-gray-200 text-gray-600 active:bg-gray-100'
-            }`}
-          >
-            {f === 'All' ? 'All' : f === 'None' ? 'No reaction' : f}
-          </button>
-        ))}
-      </div>
+      {viewMode === 'list' && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {['All', 'None', 'Mild rash', 'Vomiting', 'Diarrhea', 'Gas'].map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border whitespace-nowrap transition-colors ${
+                filter === f
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'border-gray-200 text-gray-600 active:bg-gray-100'
+              }`}
+            >
+              {f === 'All' ? 'All' : f === 'None' ? 'No reaction' : f}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Favorites */}
-      {logs.filter(l => l.favorite).length > 0 && (
+      {viewMode === 'list' && logs.filter(l => l.favorite).length > 0 && (
         <div className="card p-4">
           <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Favorites</h2>
           <div className="flex gap-2 overflow-x-auto pb-1">
@@ -176,8 +189,49 @@ export default function Diary() {
         </div>
       )}
 
+      {/* Gallery view */}
+      {viewMode === 'gallery' && (() => {
+        const logsWithPhotos = logs.filter(l => l.photo)
+        return (
+          <div className="space-y-3">
+            {logsWithPhotos.length > 0 ? (
+              <div className="columns-2 gap-2 space-y-2">
+                {logsWithPhotos.sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')).map(log => {
+                  const recipe = recipes.find(r => r.id === log.recipeId)
+                  return (
+                    <button
+                      key={log.id}
+                      onClick={() => { setExpandedPhoto(log.photo); setExpandedLog(log) }}
+                      className="w-full break-inside-avoid rounded-xl overflow-hidden border border-gray-200 active:opacity-80 transition-opacity"
+                    >
+                      <div className="w-full max-h-48 overflow-hidden bg-gray-100">
+                        <img
+                          src={log.photo}
+                          alt={recipe?.name || 'Feeding photo'}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <div className="p-1.5 bg-white">
+                        <div className="text-[11px] font-medium text-gray-700 truncate">{recipe?.name || 'Unknown'}</div>
+                        <div className="text-[10px] text-gray-400">{log.date}</div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <span className="text-4xl">📷</span>
+                <p className="text-sm text-gray-400 mt-3">No photos yet</p>
+                <p className="text-xs text-gray-300 mt-1">Log a feeding with a photo to see it here</p>
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       {/* Logs by date */}
-      {Object.entries(grouped).map(([date, dayLogs]) => (
+      {viewMode === 'list' && Object.entries(grouped).map(([date, dayLogs]) => (
         <div key={date}>
           <div className={`text-xs font-semibold mb-2 px-1 ${date === todayKey ? 'text-blue-600' : 'text-gray-500'}`}>
             {date === todayKey ? 'Today' : parseLocalDate(date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
@@ -242,14 +296,14 @@ export default function Diary() {
         </div>
       ))}
 
-      {hasMore && (
+      {viewMode === 'list' && hasMore && (
         <button onClick={() => setLoadCount(c => c + 14)}
           className="w-full py-3 text-sm text-blue-600 font-medium active:text-blue-700">
           Load more
         </button>
       )}
 
-      {logs.length === 0 && (
+      {viewMode === 'list' && logs.length === 0 && (
         <div className="text-center py-16">
           <span className="text-4xl">📝</span>
           <p className="text-sm text-gray-400 mt-3">No feeding logs yet</p>
@@ -483,19 +537,55 @@ export default function Diary() {
       {/* Expanded Photo Modal */}
       {expandedPhoto && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/80" onClick={() => setExpandedPhoto(null)} />
-          <div className="relative z-10 w-full max-w-lg p-4 flex items-center justify-center">
-            <img
-              src={expandedPhoto}
-              alt="Feeding photo"
-              className="max-w-full max-h-[85vh] rounded-xl object-contain"
-            />
-            <button
-              onClick={() => setExpandedPhoto(null)}
-              className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-gray-900/70 text-white text-sm flex items-center justify-center hover:bg-gray-900/90 transition-colors"
-            >
-              ×
-            </button>
+          <div className="fixed inset-0 bg-black/80" onClick={() => { setExpandedPhoto(null); setExpandedLog(null) }} />
+          <div className="relative z-10 w-full max-w-lg mx-auto p-4">
+            <div className="max-h-[85vh] overflow-y-auto bg-white rounded-2xl shadow-xl">
+              <img
+                src={expandedPhoto}
+                alt="Feeding photo"
+                className="w-full object-cover rounded-t-2xl"
+              />
+              {expandedLog && (() => {
+                const recipe = recipes.find(r => r.id === expandedLog.recipeId)
+                return (
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">{recipe?.emoji || '🍽️'}</span>
+                        <span className="text-sm font-semibold text-gray-900">{recipe?.name || 'Unknown'}</span>
+                      </div>
+                      <button
+                        onClick={() => { setExpandedPhoto(null); setExpandedLog(null) }}
+                        className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 text-sm flex items-center justify-center hover:bg-gray-200 transition-colors"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="text-gray-500">
+                        <div className="text-xs text-gray-400">Date</div>
+                        <div className="font-medium">{expandedLog.date}</div>
+                      </div>
+                      <div className="text-gray-500">
+                        <div className="text-xs text-gray-400">Time</div>
+                        <div className="font-medium">{expandedLog.time || '—'}</div>
+                      </div>
+                      <div className="text-gray-500">
+                        <div className="text-xs text-gray-400">Amount</div>
+                        <div className="font-medium">{expandedLog.amount || '—'}</div>
+                      </div>
+                      <div className="text-gray-500">
+                        <div className="text-xs text-gray-400">Reaction</div>
+                        <div className="font-medium">{expandedLog.reaction !== 'None' ? `⚠ ${expandedLog.reaction}` : 'No reaction'}</div>
+                      </div>
+                    </div>
+                    {expandedLog.notes && (
+                      <div className="text-xs text-gray-400 italic border-t border-gray-100 pt-3">{expandedLog.notes}</div>
+                    )}
+                  </div>
+                )
+              })()}
+            </div>
           </div>
         </div>
       )}
