@@ -27,7 +27,12 @@ export default function Dashboard() {
   }, [])
 
   // Stats
-  const uniqueFoods = new Set(logs.map(l => l.recipeId)).size
+  const uniqueFoods = new Set(
+    logs.flatMap(l => {
+      const r = recipes.find(r => r.id === l.recipeId)
+      return r?.ingredients || []
+    }),
+  ).size
   const allergens = new Set()
   logs.forEach(l => {
     const r = recipes.find(r => r.id === l.recipeId)
